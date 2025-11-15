@@ -1,42 +1,77 @@
-import { NextApiRequest, NextApiResponse } from 'next';
-import axios from 'axios';
+// pages/api/generate.ts
+import { NextRequest, NextResponse } from 'next/server';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export const runtime = 'edge'; // 使用 Edge Runtime（更快、免费）
 
-  const { topic } = req.body;
-  const apiKey = process.env.DASHSCOPE_API_KEY;
-
-  if (!apiKey) {
-    return res.status(500).json({ error: 'API Key 未配置' });
-  }
-
+export async function POST(req: NextRequest) {
   try {
-    const response = await axios.post(
-      'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
-      {
+    const { topic } = await req.json();
+
+    if (!topic) {
+      return NextResponse.json({ error: '缺少主题参数' }, { status: 400 });
+    }
+
+    // 构造给大模型的提示词（强制返回 JSON）
+    const prompt = `
+你是一个专业的 PPT 内容生成器。请根据用户提供的主题，生成一个简洁、有逻辑的 PPT 大纲。
+要求：
+- 包含 4~6 页
+- 第一页必须是“封面”，内容只包含主题名称
+- 每页有标题（title）和要点列表（content，2~4 条）
+- 用纯 JSON 格式输出，不要任何解释、不要 Markdown
+- 字段名必须是 "slides"，每个 slide 有 "title" 和 "content"
+
+主题：${topic}
+`;
+
+    // 调用通义千问（Qwen）API —— 请替换为你自己的 API 地址和密钥
+    const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.DASHSCOPE_API_KEY}`, // 在 Vercel 环境变量中设置
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         model: 'qwen-max',
         input: {
-          messages: [
-            { role: 'system', content: '你是一个专业的PPT内容生成助手。' },
-            { role: 'user', content: `请为以下主题生成一份PPT大纲和内容：${topic}` },
-          ],
+          messages: [{ role: 'user', content: prompt }],
         },
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
+        parameters: {
+          result_format: 'message',
         },
-      }
-    );
+      }),
+    });
 
-    const result = response.data.output.choices[0].message.content;
-    res.status(200).json({ content: result });
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('DashScope Error:', errText);
+      return NextResponse.json({ error: 'AI 服务调用失败' }, { status: 500 });
+    }
+
+    const data = await response.json();
+    const aiResponse = data.output.choices?.[0]?.message?.content;
+
+    if (!aiResponse) {
+      return NextResponse.json({ error: 'AI 未返回内容' }, { status: 500 });
+    }
+
+    // 尝试解析 AI 返回的 JSON
+    let parsed;
+    try {
+      // Qwen 有时会包裹在 ```json ... ``` 中，先清理
+      const cleanJson = aiResponse.replace(/```json\s*|\s*```/g, '').trim();
+      parsed = JSON.parse(cleanJson);
+    } catch (e) {
+      console.error('JSON Parse Error:', aiResponse);
+      return NextResponse.json(
+        { error: 'AI 返回格式错误，请重试', raw: aiResponse },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(parsed);
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: '请求失败，请检查API密钥或网络' });
+    console.error('Server Error:', error);
+    return NextResponse.json({ error: '服务器内部错误' }, { status: 500 });
   }
 }
