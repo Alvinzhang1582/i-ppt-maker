@@ -1,0 +1,29 @@
+{
+  "name": "i-ppt-maker",
+  "version": "1.0.0",
+  "description": "AI-powered PPT generator with structured JSON output",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^14.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "typescript": "^5",
+    "eslint": "^8",
+    "eslint-config-next": "^14.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "private": true
+}
