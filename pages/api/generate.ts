@@ -1,9 +1,9 @@
-// pages/api/generate.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'edge'; // 使用 Edge Runtime（更快、免费）
 
-export async function POST(req: NextRequest) {
+// ✅ 添加 default export
+export default async function handler(req: NextRequest) {
   try {
     const { topic } = await req.json();
 
@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
     // 构造给大模型的提示词（强制返回 JSON）
     const prompt = `
-你是一个专业的 PPT 内容生成器。请根据用户提供的主题，生成一个简洁、有逻辑的 PPT 大纲。
+你是专业的 PPT 内容生成器。请根据用户提供的主题，生成一个简洁、有逻辑的 PPT 大纲。
 要求：
 - 包含 4~6 页
 - 第一页必须是“封面”，内容只包含主题名称
@@ -24,11 +24,11 @@ export async function POST(req: NextRequest) {
 主题：${topic}
 `;
 
-    // 调用通义千问（Qwen）API —— 请替换为你自己的 API 地址和密钥
+    // 调用通义千问（Qwen）API
     const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.DASHSCOPE_API_KEY}`, // 在 Vercel 环境变量中设置
+        'Authorization': `Bearer ${process.env.DASHSCOPE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(parsed);
+
   } catch (error) {
     console.error('Server Error:', error);
     return NextResponse.json({ error: '服务器内部错误' }, { status: 500 });
