@@ -17,13 +17,28 @@
   <script>
     async function generate() {
       const topic = document.getElementById('topic').value;
-      const res = await fetch('https://ppt-api.alvinzhangfei.workers.dev/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic })
-      });
-      const data = await res.json();
-      document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+      if (!topic) {
+        alert('请输入主题');
+        return;
+      }
+
+      try {
+        const res = await fetch('https://ppt-api.alvinzhangfei.workers.dev/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic })
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const data = await res.json();
+        document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('result').textContent = `错误：${error.message}`;
+      }
     }
   </script>
 </body>
